@@ -10,7 +10,7 @@
 
 ## Http请求
 
-现在我们编写一个控制器，它将返回消息和图像的值，以及信息和图像的创建，另一个控制器将管理用户。我们希望加载社交网络的初始界面，查看所有社区帖子。当前端调用 GET /v1/community/messages时，所有社区消息均被回复。我们在每个入口点，每种方法都写上路的终点。@ResponseEntity内部包含将返回的Http代码和详细信息。需要接收一条消息并将其保存在数据库中。@RequestMapping是一个用于定义请求路径的注解，常用于@Controller类或方法上，常用于标识控制器的根路径或为某个方法指定访问路径。
+现在我们编写一个控制器，它将返回消息和图像的值，以及信息和图像的创建，另一个控制器将管理用户。我们希望加载社交网络的初始界面，查看所有社区帖子。当前端调用 GET /v1/community/messages时，所有社区消息均被回复。我们在每个入口点，每种方法都写上路的终点。@ResponseEntity内部包含将返回的Http代码和详细信息。需要接收一条消息并将其保存在数据库中。@RequestMapping是一个用于定义请求路径的注解，常用于@Controller类或方法上，常用于标识控制器的根路径或为某个方法指定访问路径，或者直接使用@GetMapping。
 
 ```java
 // CommunityController.java
@@ -24,14 +24,6 @@ public class CommunityController {
     public ResponseEntity<List<MessageDto>> getCommunityMessages(
             @RequestParam(value = "page", defaultValue = "0") int page) {
         return ResponseEntity.ok(communityService.getCommunityMessages(user, page));
-    }
-
-
-    @GetMapping("/images")
-    public ResponseEntity<List<ImageDto>> getCommunityImages(
-            @RequestParam(value = "page", defaultValue = "0") int page
-    ) {
-        return ResponseEntity.ok(communityService.getCommunityImages(userDto, page));
     }
 }
 ```
@@ -50,21 +42,15 @@ public class UserController {
     public ResponseEntity<ProfileDto> getUserProfile(@PathVariable Long userId) {
         return ResponseEntity.ok(userService.getProfile(userId));
     }
-
-    @PostMapping("/friends/{friendId}")
-    public ResponseEntity<Void> addFriend(@PathVariable Long friendId) {
-        userService.addFriend(userDto, friendId);
-        return ResponseEntity.noContent().build();
-    }
-
 ```
 
 ## 处理传入参数
 
-@RequestParam用于获取 URL 查询参数中的值（也就是 ?key=value这种形式的参数），并将其注入到方法参数中。@RequestBody MessageDto messageDto表示前端以 JSON 格式提交的数据会自动绑定到 messageDto 对象中。communityService.postMessage(user, messageDto)调用服务层的方法保存消息，并返回一个消息对象。
+@RequestParam用于获取 URL 查询参数中的值，并将其注入到方法参数中。@RequestBody MessageDto messageDto表示前端以 JSON 格式提交的数据会自动绑定到 messageDto 对象中。communityService.postMessage(user, messageDto)调用服务层的方法保存消息，并返回一个消息对象。
 
 ```java
-    @PostMapping("/messages")
+// CommunityController.java
+	@PostMapping("/messages")
     public ResponseEntity<MessageDto> postMessage(@RequestBody MessageDto messageDto) {
         return ResponseEntity.created(URI.create("/v1/community/messages"))
                 .body(communityService.postMessage(user, messageDto));
@@ -80,19 +66,10 @@ public class UserController {
     }
 ```
 
-内容
+这段代码是使用 Lombok 注解生成 Java 数据类的一个例子，它定义了一个名为 ImageDto的类。@Data自动生成getters、setters、toString()、equals()、hashCode()方法。@AllArgsConstructor自动生成一个包含所有字段的构造函数。@NoArgsConstructor自动生成一个无参构造函数，@Builder支持Builder 模式创建对象，便于链式构建。
 
 ```java
 //ImageDto.java
-package com.sergio.socialnetwork.dto;
-
-import java.time.LocalDateTime;
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -110,159 +87,17 @@ public class ImageDto {
 
 ## 建立联系
 
-与Controller类相同，Service 类要加上 @Service 或 @Component注解。让我们从社区服务开始，创建四个与我在控制器中创建方法类似的方法。我们需要让控制器和服务建立联系。
-
-## 构建控制器
-
-
-
-## 结尾
-
-
-
-## 代码
+@Controller都 @Service 继承于@Component注解，Spring将查找所有具有@Compoment注释的类。我们创建控制器中类似的方法，需要让控制器和服务建立联系。将值赋给类变量，Spring 在构建控制器时，查看输入参数，在其内部列表中查找此类并将其注入，这就是依赖注入的工作原理。
 
 ```java
-//CommunityController.java
-package com.sergio.socialnetwork.controllers;
-
-import java.io.IOException;
-import java.net.URI;
-import java.util.List;
-
-import com.sergio.socialnetwork.dto.ImageDto;
-import com.sergio.socialnetwork.dto.MessageDto;
-import com.sergio.socialnetwork.dto.UserDto;
-import com.sergio.socialnetwork.services.CommunityService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
-
-@RequiredArgsConstructor
-@RestController
-@RequestMapping("/v1/community")
-public class CommunityController {
-
-    private final CommunityService communityService;
-
-    @GetMapping("/messages")
-    public ResponseEntity<List<MessageDto>> getCommunityMessages(
-            @AuthenticationPrincipal UserDto user,
-            @RequestParam(value = "page", defaultValue = "0") int page) {
-        return ResponseEntity.ok(communityService.getCommunityMessages(user, page));
-    }
-
-    @PostMapping("/messages")
-    public ResponseEntity<MessageDto> postMessage(@AuthenticationPrincipal UserDto user,
-                                                  @RequestBody MessageDto messageDto) {
-        return ResponseEntity.created(URI.create("/v1/community/messages"))
-                .body(communityService.postMessage(user, messageDto));
-    }
-
-    @PostMapping("/images")
-    public ResponseEntity<ImageDto> postImage(
-            @AuthenticationPrincipal UserDto userDto,
-            @RequestParam MultipartFile file,
-            @RequestParam(value = "title") String title
-    ) throws IOException {
-        return ResponseEntity.created(URI.create("/community/images"))
-                .body(communityService.postImage(userDto, file, title));
-    }
-
-    @GetMapping("/images")
-    public ResponseEntity<List<ImageDto>> getCommunityImages(
-            @AuthenticationPrincipal UserDto userDto,
-            @RequestParam(value = "page", defaultValue = "0") int page
-    ) {
-        return ResponseEntity.ok(communityService.getCommunityImages(userDto, page));
-    }
+public CommunityController(CommunityService communityService) {
+	this.communityService = communityService;
 }
 ```
 
-```java
-//UserController.java
-package com.sergio.socialnetwork.controllers;
 
-import java.util.List;
 
-import com.sergio.socialnetwork.dto.ProfileDto;
-import com.sergio.socialnetwork.dto.UserDto;
-import com.sergio.socialnetwork.dto.UserSummaryDto;
-import com.sergio.socialnetwork.services.UserService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
 
-@RequiredArgsConstructor
-@RestController
-@RequestMapping("/v1/users")
-public class UserController {
-
-    private final UserService userService;
-
-    @GetMapping("/{userId}/profile")
-    public ResponseEntity<ProfileDto> getUserProfile(@PathVariable Long userId) {
-        return ResponseEntity.ok(userService.getProfile(userId));
-    }
-
-    @PostMapping("/friends/{friendId}")
-    public ResponseEntity<Void> addFriend(@AuthenticationPrincipal UserDto userDto,
-                                          @PathVariable Long friendId) {
-        userService.addFriend(userDto, friendId);
-        return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping("/search")
-    public ResponseEntity<List<UserSummaryDto>> searchUsers(@RequestParam(value = "term") String term) {
-        return ResponseEntity.ok(userService.searchUsers(term));
-    }
-}
-
-```
-
-```java
-
-```
-
-```java
-// MessageDto.java
-package com.sergio.socialnetwork.dto;
-
-import java.time.LocalDateTime;
-
-import com.fasterxml.jackson.annotation.JsonFormat;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
-public class MessageDto {
-
-    private Long id;
-    private String content;
-    private UserSummaryDto userDto;
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm")
-    private LocalDateTime createdDate;
-
-}
-```
 
 
 
